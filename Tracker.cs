@@ -6,24 +6,55 @@ public class Tracker : MonoBehaviour
 {
     Vector3[] mPoints;
     Vector3 mDir;
-    Vector3 mTa, mTb;
+    Vector3 mTa, mTb,mTx;
     int iCurrentIndex;
     int PSIZE = 0;
+    int iTick = 0;
+    Camera mCamera;
+    Vector3[] mPool;
+    const int POOL_SIZE = 20;
+
     void Start()
     {
+        GameObject obj = GameObject.Find("MainCamera");
+        mCamera = obj.GetComponent<Camera>();
+        mCamera.transform.position = transform.position;
+        if (mCamera == null)
+        {
+            Debug.Log("ccan found canmear");
+        }
+        //mCamera = obj.GetComponent<Camera>();
         mTa = new Vector3();
         mTb = new Vector3();
+        mTx = new Vector3();
+        mPool = new Vector3[POOL_SIZE];
+        
         PSIZE = FindChild();
         if (PSIZE <= 0)
         {
             Debug.Log("start track fail");
             return;
         }
-        iCurrentIndex = 70;
+        iCurrentIndex = 1;
         AdjustPointY();
         mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - mPoints[iCurrentIndex % PSIZE];
         transform.position = mPoints[iCurrentIndex % PSIZE];
         transform.position += Vector3.up * 3;
+        for (int i = 0; i < POOL_SIZE; i++)
+        {
+            mPool[i] = new Vector3();
+            Vector3Copy(transform.position, ref mPool[i]);
+            Debug.Log("src"+ transform.position.ToString() + "->" + mPool[i].ToString());
+        }
+        Debug.Log("-------------------------------");
+        for (int i = 0; i < POOL_SIZE; i++)
+        {
+            Debug.Log(mPool[i].ToString());
+        }
+        Debug.Log("-------------------------------");
+        Vector3Copy(transform.position, ref mTx);
+        Debug.Log(mTx.ToString());
+
     }
     /*fill points,maybe sort point*/
 
@@ -165,6 +196,31 @@ public class Tracker : MonoBehaviour
         Quaternion targetRotation = Quaternion.LookRotation(dir, Vector3.up);
         transform.rotation = targetRotation;
     }
+    void Toward(Vector3 dir)
+    {
+        //Vector3 dir = to - from;
+        Quaternion targetRotation = Quaternion.LookRotation(dir, Vector3.up);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime);
+
+    }
+
+    void Vector3Copy(Vector3 src, ref Vector3 dst)
+    {
+        dst.x = src.x;
+        dst.y = src.y;
+        dst.z = src.z;
+    }
+    void UpdatePool(Vector3 n)
+    {
+        for (int i = 0; i < POOL_SIZE - 1;i++)
+        {
+            //mPool[i] = mPool[i + 1];
+            Vector3Copy(mPool[i + 1], ref mPool[i]);
+        }
+       // mPool[POOL_SIZE - 1] = n;
+        Vector3Copy(n, ref mPool[POOL_SIZE - 1]);
+       
+    }
     // Update is called once per frame
     void Update()
     {
@@ -172,7 +228,17 @@ public class Tracker : MonoBehaviour
         Vector3 next = GetNext(cur);
         Vector3 dir = GetDirection();
         transform.position = next;
-        TowardForce(dir);
+        Toward(dir);
+        mTx.x = dir.x;
+        mTx.z = dir.z;
+        mTx.y = 0;
+        mTx = mTx.normalized;
+        //Debug.Log(mTx);
+        
+        UpdatePool(next);
+        mCamera.transform.position = mPool[0] ;
+        mCamera.transform.rotation = transform.rotation;
+        //TowardForce(dir);
         //Debug.DrawLine(mPoints[iCurrentIndex % PSIZE],mPoints[(iCurrentIndex+ 1) % PSIZE], Color.red);
     }
 }
