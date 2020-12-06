@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class Tracker : MonoBehaviour
 {
+    public bool bReverse;
     public int iStartIndex;
     Vector3[] mPoints;
     Vector3 mDir;
@@ -17,6 +18,7 @@ public class Tracker : MonoBehaviour
     const int POOL_SIZE = 60;
     MOVE_DIR mMoveHeight;
     float fDeltaY;
+    
     enum MOVE_DIR
     {
         UP = 1,
@@ -30,10 +32,14 @@ public class Tracker : MonoBehaviour
         GameObject obj = GameObject.Find("MainCamera");
         mCamera = obj.GetComponent<Camera>();
         mAni = GetComponent<Animator>();
-        mCamera.transform.position = transform.position;
+        
         if (mCamera == null)
         {
             Debug.Log("ccan found canmear");
+        }
+        else
+        {
+            mCamera.transform.position = transform.position;
         }
         //mCamera = obj.GetComponent<Camera>();
         mTa = new Vector3();
@@ -72,8 +78,16 @@ public class Tracker : MonoBehaviour
         mPoints = new Vector3[father.transform.childCount];
         foreach (Transform child in father.transform)
         {
-             //print(child.name);
-            mPoints[i++] = child.position;
+            //print(child.name);
+            if (bReverse)
+            {
+                int t = father.transform.childCount - 1 - i++;      
+                mPoints[t] = child.position;
+            }
+            else
+            {
+                mPoints[i++] = child.position;
+            }
         }
         return father.transform.childCount;
     }
@@ -149,22 +163,26 @@ public class Tracker : MonoBehaviour
 
     void AdjustPointY()
     {
+        Vector3[] entry;
+        entry = mPoints;
         for (int i = 0; i < PSIZE; i++)
         {
-            mPoints[i].y = GetGroundHeight(mPoints[i]);
-            if (mPoints[i].y < 0)
+            entry[i].y = GetGroundHeight(entry[i]);
+            if (entry[i].y < 0)
             {
                 Debug.Log("invaild height!!!!!!!!!!!! check again:" + i.ToString());
             }
-            Debug.Log("P" + (i + 1).ToString() + " :" + mPoints[i].ToString());
+            Debug.Log("P" + (i + 1).ToString() + " :" + entry[i].ToString());
         }
     }
 
     /*return next posistion*/
     public Vector3 GetNext(Vector3 realpos)
     {
-        Vector3 current = mPoints[iCurrentIndex % PSIZE];
-        Vector3 next = mPoints[(iCurrentIndex + 1) % PSIZE];
+        Vector3[] entry;
+        entry = mPoints;
+        Vector3 current = entry[iCurrentIndex % PSIZE];
+        Vector3 next = entry[(iCurrentIndex + 1) % PSIZE];
         Vector3 dir = next - current;
         dir = dir.normalized;
         Vector3 nextStep = dir * Time.deltaTime * 6;
@@ -173,11 +191,12 @@ public class Tracker : MonoBehaviour
         float distance = GetXZDistance(realpos,next);
         Debug.DrawLine(current, next,Color.yellow);
         //Debug.Log("f:" + realpos.ToString() + " t:" + next.ToString()  + ",distance:" + distance.ToString());
+        mDir = next - transform.position;
         if (distance < 2)
         {
             iCurrentIndex += 1;
             iCurrentIndex %= PSIZE;
-            mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - mPoints[iCurrentIndex % PSIZE];
+            //mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - mPoints[iCurrentIndex % PSIZE];
             if (mDir.y > 6)
             {
                 mMoveHeight = MOVE_DIR.UP;
@@ -195,7 +214,7 @@ public class Tracker : MonoBehaviour
 
     public Vector3 GetDirection()
     {
-        mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - transform.position;
+        //mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - transform.position;
         return mDir;
     }
 
@@ -241,17 +260,6 @@ public class Tracker : MonoBehaviour
        
     }
 
-    float GetDeltaY()
-    {
-        float ret = 0;
-        Vector3 dir = mPoints[(iCurrentIndex + 1) % PSIZE] - transform.position;
-        Debug.Log(dir.ToString());
-        if (dir.y <= -2)
-        {
-            ret = dir.y / 2;
-        }
-        return Mathf.Abs(ret);
-    }
     // Update is called once per frame
     bool bCanMove = true;
     void Update()
@@ -295,13 +303,15 @@ public class Tracker : MonoBehaviour
             }
             Debug.Log("delta y:" + fDeltaY.ToString());
             mPool[0].y = transform.position.y;
-  
 
 
-               // Debug.Log("ext y:" + deltay.ToString());
-            mCamera.transform.position = mPool[0] + Vector3.up * (2.4f + fDeltaY);
-            mCamera.transform.rotation = transform.rotation;
-            
+
+            // Debug.Log("ext y:" + deltay.ToString());
+            if (mCamera != null)
+            {
+                mCamera.transform.position = mPool[0] + Vector3.up * (2.4f + fDeltaY);
+                mCamera.transform.rotation = transform.rotation;
+            }
             //transform.position = next;
             Toward(dir);
             mAni.SetFloat("Forward", 3, 0.1f, Time.deltaTime);

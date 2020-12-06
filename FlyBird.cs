@@ -21,11 +21,11 @@ public class FlyBird : MonoBehaviour
         //Debug.Log("start");
         mPoints = new Vector3[POINT_SIZE];
         Vector3 random;
-        random = new Vector3(Random.Range(-1f, 1f), Random.Range(-0.1f, 0.1f), Random.Range(-1f, 1f));
+        random = new Vector3(Random.Range(-1f, 1f), Random.Range(0, 1f), Random.Range(-1f, 1f));
         //Debug.Log("radom:" + random.ToString());
         mPoints[0] = transform.position;
         mPoints[1] = transform.position + random * iFlyDistanceMax;
-        random = new Vector3(Random.Range(2f, 3f), Random.Range(-0.1f, -0.1f), Random.Range(2f, 3f));
+        random = new Vector3(Random.Range(2f, 3f), Random.Range(0, 1f), Random.Range(2f, 3f));
         mPoints[2] = transform.position + random * iFlyDistanceMax;
         mCurrentPos = mPoints[0];
         mCurrentPoint = mPoints[0];
@@ -33,7 +33,13 @@ public class FlyBird : MonoBehaviour
         iCurrentIndex = 0;
         mAni = GetComponent<Animator>();
     }
+    void Toward(Vector3 dir)
+    {
+        //Vector3 dir = to - from;
+        Quaternion targetRotation = Quaternion.LookRotation(dir, Vector3.up);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime);
 
+    }
     void MoveNext()
     {
         Vector3 dir = mNextPoint - mCurrentPoint;
@@ -57,7 +63,7 @@ public class FlyBird : MonoBehaviour
         Vector3 Orgin = transform.position;
         Vector3 Target = mNextPoint;
         Vector3 Dir = Target - Orgin;
-
+        Toward(Dir);
         //Quaternion targetRotation = Quaternion.LookRotation(Dir);
         //this.transform.rotation = targetRotation;
 
