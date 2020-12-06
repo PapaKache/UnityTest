@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class Tracker : MonoBehaviour
 {
+    public int iStartIndex;
     Vector3[] mPoints;
     Vector3 mDir;
     Vector3 mTa, mTb,mTx;
@@ -11,13 +12,24 @@ public class Tracker : MonoBehaviour
     int PSIZE = 0;
     int iTick = 0;
     Camera mCamera;
+    Animator mAni;
     Vector3[] mPool;
-    const int POOL_SIZE = 20;
-
+    const int POOL_SIZE = 60;
+    MOVE_DIR mMoveHeight;
+    float fDeltaY;
+    enum MOVE_DIR
+    {
+        UP = 1,
+        DOWN = 2,
+        HOR = 3,
+    };
     void Start()
     {
+        fDeltaY = 0;
+        mMoveHeight = MOVE_DIR.HOR;
         GameObject obj = GameObject.Find("MainCamera");
         mCamera = obj.GetComponent<Camera>();
+        mAni = GetComponent<Animator>();
         mCamera.transform.position = transform.position;
         if (mCamera == null)
         {
@@ -35,7 +47,7 @@ public class Tracker : MonoBehaviour
             Debug.Log("start track fail");
             return;
         }
-        iCurrentIndex = 1;
+        iCurrentIndex = iStartIndex % PSIZE;
         AdjustPointY();
         mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - mPoints[iCurrentIndex % PSIZE];
         transform.position = mPoints[iCurrentIndex % PSIZE];
@@ -45,15 +57,8 @@ public class Tracker : MonoBehaviour
             mPool[i] = new Vector3();
             Vector3Copy(transform.position, ref mPool[i]);
             Debug.Log("src"+ transform.position.ToString() + "->" + mPool[i].ToString());
-        }
-        Debug.Log("-------------------------------");
-        for (int i = 0; i < POOL_SIZE; i++)
-        {
-            Debug.Log(mPool[i].ToString());
-        }
-        Debug.Log("-------------------------------");
-        Vector3Copy(transform.position, ref mTx);
-        Debug.Log(mTx.ToString());
+
+        };
 
     }
     /*fill points,maybe sort point*/
@@ -167,18 +172,30 @@ public class Tracker : MonoBehaviour
         //float distance = Vector3.Distance(realpos, next);
         float distance = GetXZDistance(realpos,next);
         Debug.DrawLine(current, next,Color.yellow);
-        //Debug.Log("a:" + realpos.ToString() + " b:" + next.ToString()  + ",distance:" + distance.ToString());
-        if (distance < Time.deltaTime * 8)
+        //Debug.Log("f:" + realpos.ToString() + " t:" + next.ToString()  + ",distance:" + distance.ToString());
+        if (distance < 2)
         {
             iCurrentIndex += 1;
             iCurrentIndex %= PSIZE;
             mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - mPoints[iCurrentIndex % PSIZE];
+            if (mDir.y > 6)
+            {
+                mMoveHeight = MOVE_DIR.UP;
+            }
+            else if (mDir.y < 6)
+            {
+                mMoveHeight = MOVE_DIR.DOWN;
+            }
+            else
+                mMoveHeight = MOVE_DIR.HOR;
+
         }
         return nextStep + realpos;
     }
 
     public Vector3 GetDirection()
     {
+        mDir = mPoints[(iCurrentIndex + 1) % PSIZE] - transform.position;
         return mDir;
     }
 
@@ -187,8 +204,10 @@ public class Tracker : MonoBehaviour
     {
         mTa.x = a.x;
         mTa.z = a.z;
+        mTa.y = 0;
         mTb.x = b.x;
         mTb.z = b.z;
+        mTb.y = 0;
         return Vector3.Distance(mTa,mTb);
     }
     void TowardForce(Vector3 dir)
@@ -221,14 +240,27 @@ public class Tracker : MonoBehaviour
         Vector3Copy(n, ref mPool[POOL_SIZE - 1]);
        
     }
+
+    float GetDeltaY()
+    {
+        float ret = 0;
+        Vector3 dir = mPoints[(iCurrentIndex + 1) % PSIZE] - transform.position;
+        Debug.Log(dir.ToString());
+        if (dir.y <= -2)
+        {
+            ret = dir.y / 2;
+        }
+        return Mathf.Abs(ret);
+    }
     // Update is called once per frame
+    bool bCanMove = true;
     void Update()
     {
         Vector3 cur = transform.position;
         Vector3 next = GetNext(cur);
         Vector3 dir = GetDirection();
-        transform.position = next;
-        Toward(dir);
+        
+        
         mTx.x = dir.x;
         mTx.z = dir.z;
         mTx.y = 0;
@@ -236,8 +268,45 @@ public class Tracker : MonoBehaviour
         //Debug.Log(mTx);
         
         UpdatePool(next);
-        mCamera.transform.position = mPool[0] ;
-        mCamera.transform.rotation = transform.rotation;
+        if (bCanMove)
+        {
+            Vector3 t = transform.position - mPool[0];
+            if (t.y < -2f )
+            {
+                if (fDeltaY < 3)
+                     fDeltaY += Time.deltaTime * Mathf.Abs(t.y) * 2;
+            }
+            if (t.y > 0.5f )
+            {
+                if( fDeltaY > -2)
+                    fDeltaY -= Time.deltaTime * t.y;
+            }
+            else
+            {
+                if (fDeltaY > 0.1f)
+                {
+                    fDeltaY -= Time.deltaTime;
+                }
+                else if (fDeltaY < -0.1f)
+                {
+                    fDeltaY += Time.deltaTime;
+                }
+
+            }
+            Debug.Log("delta y:" + fDeltaY.ToString());
+            mPool[0].y = transform.position.y;
+  
+
+
+               // Debug.Log("ext y:" + deltay.ToString());
+            mCamera.transform.position = mPool[0] + Vector3.up * (2.4f + fDeltaY);
+            mCamera.transform.rotation = transform.rotation;
+            
+            //transform.position = next;
+            Toward(dir);
+            mAni.SetFloat("Forward", 3, 0.1f, Time.deltaTime);
+        }
+        
         //TowardForce(dir);
         //Debug.DrawLine(mPoints[iCurrentIndex % PSIZE],mPoints[(iCurrentIndex+ 1) % PSIZE], Color.red);
     }
