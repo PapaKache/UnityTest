@@ -301,7 +301,7 @@ public class Tracker : MonoBehaviour
                 }
 
             }
-            Debug.Log("delta y:" + fDeltaY.ToString());
+            //Debug.Log("delta y:" + fDeltaY.ToString());
             mPool[0].y = transform.position.y;
 
 
